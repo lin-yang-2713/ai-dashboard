@@ -32,6 +32,9 @@ app.get('/health', (req, res) => {
 // app.use('/api/auth', authRoutes);
 // app.use('/api/users', userRoutes);
 
+import auditRoutes from './routes/audit';
+app.use('/api/audit', auditRoutes);
+
 // 404 handler - must be after all routes
 app.use(notFoundHandler);
 
