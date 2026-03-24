@@ -7,6 +7,7 @@ import statusRoutes from './routes/status';
 import videoRoutes from './routes/video';
 import predictiveRoutes from './routes/predictive';
 import translationRoutes from './routes/translation';
+import circuitBreakerRoutes from './routes/circuitBreaker';
 
 const app: Express = express();
 
@@ -22,5 +23,6 @@ app.use('/status', statusRoutes);
 app.use('/api/video', videoRoutes);
 app.use('/api/predictive', predictiveRoutes);
 app.use('/api/translation', translationRoutes);
+app.use('/api/circuit-breaker', circuitBreakerRoutes);
 
 export default app;

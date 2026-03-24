@@ -5,10 +5,12 @@ import {
   PreservedElement,
   SupportedLanguage,
 } from '../types/translation';
+import { circuitBreakerService } from './CircuitBreakerService';
 
 /**
  * TranslationService - Backend translation service
  * Integrates with DeepL and Google Translate APIs
+ * Uses circuit breaker pattern for resilience
  */
 class TranslationService {
   private readonly LANGUAGES: SupportedLanguage[] = [
@@ -157,59 +159,87 @@ class TranslationService {
   }
 
   /**
-   * Translate with DeepL
+   * Translate with DeepL (with circuit breaker)
    */
   private async translateWithDeepL(
     text: string,
     sourceLang: string,
     targetLang: string
   ): Promise<string> {
-    const apiKey = process.env.DEEPL_API_KEY;
-    
-    const response = await fetch('https://api-free.deepl.com/v2/translate', {
-      method: 'POST',
-      headers: {
-        'Authorization': `DeepL-Auth-Key ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text: [text],
-        source_lang: sourceLang.toUpperCase(),
-        target_lang: targetLang.toUpperCase(),
-        preserve_formatting: true,
-      }),
-    });
+    return circuitBreakerService.execute(
+      'translation',
+      async () => {
+        const apiKey = process.env.DEEPL_API_KEY;
+        
+        const response = await fetch('https://api-free.deepl.com/v2/translate', {
+          method: 'POST',
+          headers: {
+            'Authorization': `DeepL-Auth-Key ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: [text],
+            source_lang: sourceLang.toUpperCase(),
+            target_lang: targetLang.toUpperCase(),
+            preserve_formatting: true,
+          }),
+        });
 
-    const data = await response.json();
-    return data.translations[0].text;
+        if (!response.ok) {
+          throw new Error(`DeepL API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.translations[0].text;
+      },
+      async () => {
+        // Fallback: return original text
+        console.warn('DeepL circuit breaker open, returning original text');
+        return text;
+      }
+    );
   }
 
   /**
-   * Translate with Google Translate
+   * Translate with Google Translate (with circuit breaker)
    */
   private async translateWithGoogle(
     text: string,
     sourceLang: string,
     targetLang: string
   ): Promise<string> {
-    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
-    
-    const response = await fetch(
-      `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          q: text,
-          source: sourceLang,
-          target: targetLang,
-          format: 'text',
-        }),
+    return circuitBreakerService.execute(
+      'translation',
+      async () => {
+        const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+        
+        const response = await fetch(
+          `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              q: text,
+              source: sourceLang,
+              target: targetLang,
+              format: 'text',
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Google Translate API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.data.translations[0].translatedText;
+      },
+      async () => {
+        // Fallback: return original text
+        console.warn('Google Translate circuit breaker open, returning original text');
+        return text;
       }
     );
-
-    const data = await response.json();
-    return data.data.translations[0].translatedText;
   }
 
   /**
