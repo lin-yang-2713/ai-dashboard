@@ -5,6 +5,7 @@ import Redis from 'ioredis';
 import jwt from 'jsonwebtoken';
 import { createLogger } from '../lib/logger';
 import { config } from '../config/config';
+import { corsOptions } from '../config/cors';
 import { getRedisConnection } from '../config/runtime';
 import { eventBus, JobProgressEvent } from '../lib/eventBus';
 import { prisma } from '../lib/prisma';
@@ -39,7 +40,7 @@ export class SocketService {
   public initialize(httpServer: HttpServer): void {
     this.io = new Server(httpServer, {
       cors: {
-        origin: '*', // To be restricted in production
+        origin: config.NODE_ENV === 'production' ? corsOptions.origin : '*',
         methods: ['GET', 'POST'],
       },
     });
