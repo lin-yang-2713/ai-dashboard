@@ -193,6 +193,9 @@ export async function changePassword(req: Request, res: Response): Promise<void>
   const newPasswordHash = await PasswordHistoryService.hashPassword(newPassword);
   await PasswordHistoryService.recordPasswordChange(userId, newPasswordHash);
 
+  // Invalidate all existing refresh tokens
+  await UserStore.update(userId, { refreshTokens: [] });
+
   // Blacklist the current access token — forces re-login after password change
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith('Bearer ')) {
