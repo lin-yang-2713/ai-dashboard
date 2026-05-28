@@ -2,7 +2,6 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from '../lib/logger';
 import { videoConfig } from '../config/video.config';
-import { ttsConfig } from '../config/tts.config';
 
 const logger = createLogger('initDirectories');
 
@@ -13,7 +12,7 @@ export async function initDirectories(): Promise<void> {
   const directories = [
     path.join(process.cwd(), videoConfig.upload.uploadDir),
     path.join(process.cwd(), videoConfig.upload.transcodedDir),
-    path.join(process.cwd(), ttsConfig.outputDir),
+    path.join(process.cwd(), 'uploads', 'tts'),
   ];
 
   for (const dir of directories) {
@@ -22,7 +21,7 @@ export async function initDirectories(): Promise<void> {
       logger.info(`Directory ensured: ${dir}`);
     } catch (error) {
       logger.error(`Failed to create directory ${dir}`, { error });
-      throw new Error(`Failed to initialize directory ${dir}: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
     }
   }
 }
