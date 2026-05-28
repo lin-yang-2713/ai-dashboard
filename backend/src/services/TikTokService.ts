@@ -313,29 +313,40 @@ class TikTokService {
     const startByte = chunkIndex * CHUNK_SIZE_BYTES;
     const endByte = Math.min(startByte + chunkData.length - 1, totalFileSize - 1);
 
-    const response = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'video/mp4',
-        'Content-Range': `bytes ${startByte}-${endByte}/${totalFileSize}`,
-        'Content-Length': String(chunkData.length),
-      },
-      body: chunkData,
-    });
+    try {
+      const response = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'video/mp4',
+          'Content-Range': `bytes ${startByte}-${endByte}/${totalFileSize}`,
+          'Content-Length': String(chunkData.length),
+        },
+        body: chunkData,
+      });
 
-    if (!response.ok && response.status !== 206) {
-      const text = await response.text();
-      throw new Error(
-        `Chunk ${chunkIndex + 1}/${totalChunks} upload failed (${response.status}): ${text}`,
-      );
+      if (!response.ok && response.status !== 206) {
+        const text = await response.text();
+        throw new Error(
+          `Chunk ${chunkIndex + 1}/${totalChunks} upload failed (${response.status}): ${text}`,
+        );
+      }
+
+      // Mark chunk as confirmed, update last successful chunk index, and refresh TTL
+      await redis.hset(progressKey, String(chunkIndex), '1');
+      await redis.hset(progressKey, LAST_CHUNK_FIELD, String(chunkIndex));
+      await redis.expire(progressKey, UPLOAD_PROGRESS_TTL);
+
+      logger.info('TikTok chunk uploaded', { chunkIndex: chunkIndex + 1, totalChunks });
+    } catch (error) {
+      // Clean up progress key on failure
+      await redis.del(progressKey);
+      logger.error('TikTok chunk upload failed, progress cleaned up', {
+        chunkIndex: chunkIndex + 1,
+        totalChunks,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
     }
-
-    // Mark chunk as confirmed, update last successful chunk index, and refresh TTL
-    await redis.hset(progressKey, String(chunkIndex), '1');
-    await redis.hset(progressKey, LAST_CHUNK_FIELD, String(chunkIndex));
-    await redis.expire(progressKey, UPLOAD_PROGRESS_TTL);
-
-    logger.info('TikTok chunk uploaded', { chunkIndex: chunkIndex + 1, totalChunks });
   }
 
   /**

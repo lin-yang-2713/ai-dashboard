@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { Readable } from 'stream';
 import { prisma } from '../lib/prisma';
+import { replicaClient } from '../lib/readReplica';
 import { paginatedQuery } from '../lib/paginatedQuery';
 
 function makeStream(res: Response, headers: Record<string, string>): Readable {
@@ -35,6 +36,7 @@ export const ExportService = {
     endDate: Date,
     res: Response,
   ): Promise<void> => {
+    // Read-only operation — use read replica
     const where = { organizationId, recordedAt: { gte: startDate, lte: endDate } };
     const header = 'id,organizationId,platform,metric,value,recordedAt\n';
     const stream = makeStream(res, {
@@ -42,7 +44,7 @@ export const ExportService = {
       'Content-Disposition': 'attachment; filename="analytics.csv"',
     });
     stream.push(header);
-    await pump(stream, (args) => prisma.analyticsEntry.findMany({ where, ...args }), (row) =>
+    await pump(stream, (args) => replicaClient.analyticsEntry.findMany({ where, ...args }), (row) =>
       `${row.id},"${row.organizationId}","${row.platform}","${row.metric}",${row.value},"${row.recordedAt.toISOString()}"\n`,
     );
   },
@@ -53,6 +55,7 @@ export const ExportService = {
     endDate: Date,
     res: Response,
   ): Promise<void> => {
+    // Read-only operation — use read replica
     const where = { organizationId, recordedAt: { gte: startDate, lte: endDate } };
     const stream = makeStream(res, {
       'Content-Type': 'application/x-ndjson; charset=utf-8',
@@ -69,6 +72,7 @@ export const ExportService = {
     endDate: Date,
     res: Response,
   ): Promise<void> => {
+    // Read-only operation — use read replica
     const where = { organizationId, createdAt: { gte: startDate, lte: endDate } };
     const header = 'id,organizationId,content,platform,scheduledAt,createdAt\n';
     const stream = makeStream(res, {
@@ -76,7 +80,7 @@ export const ExportService = {
       'Content-Disposition': 'attachment; filename="posts.csv"',
     });
     stream.push(header);
-    await pump(stream, (args) => prisma.post.findMany({ where, ...args }), (row) => {
+    await pump(stream, (args) => replicaClient.post.findMany({ where, ...args }), (row) => {
       const content = row.content.replace(/"/g, '""');
       return `${row.id},"${row.organizationId}","${content}","${row.platform}","${row.scheduledAt?.toISOString() || ''}","${row.createdAt.toISOString()}"\n`;
     });
@@ -88,6 +92,7 @@ export const ExportService = {
     endDate: Date,
     res: Response,
   ): Promise<void> => {
+    // Read-only operation — use read replica
     const where = { organizationId, createdAt: { gte: startDate, lte: endDate } };
     const stream = makeStream(res, {
       'Content-Type': 'application/x-ndjson; charset=utf-8',
