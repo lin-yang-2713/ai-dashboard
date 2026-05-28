@@ -128,6 +128,10 @@ const pruneTarget = async (
         const archiveRoot = path.join(toAbsolutePath(config.archiveDirectory), target.category);
         await archiveFile(filePath, archiveRoot, path.relative(absoluteBasePath, filePath));
         metrics.archivedFiles += 1;
+      } else if (config.dryRun) {
+        // Dry-run mode: log what would be deleted without actually deleting
+        logger.info(`[DRY-RUN] Would delete file`, { filePath, category: target.category });
+        metrics.deletedFiles += 1;
       } else {
         await fs.unlink(filePath);
         metrics.deletedFiles += 1;
@@ -192,6 +196,23 @@ export const runDataPruning = async (
     ...overrideConfig,
   };
 
+  // Safeguard: require explicit opt-in for delete mode
+  if (config.mode === 'delete' && !config.enabled) {
+    logger.warn('Data pruning is disabled (DATA_PRUNING_ENABLED=false). Skipping pruning run.');
+    return {
+      scannedFiles: 0,
+      eligibleFiles: 0,
+      archivedFiles: 0,
+      deletedFiles: 0,
+      skippedFiles: 0,
+      errors: [],
+      byCategory: {
+        logs: emptyMetrics(),
+        analytics: emptyMetrics(),
+      },
+    };
+  }
+
   const byCategory: Record<'logs' | 'analytics', CategoryMetrics> = {
     logs: emptyMetrics(),
     analytics: emptyMetrics(),
@@ -199,6 +220,8 @@ export const runDataPruning = async (
 
   logger.info('Starting data retention pruning run', {
     mode: config.mode,
+    dryRun: config.dryRun,
+    enabled: config.enabled,
     missingPathPolicy: config.missingPathPolicy,
     logsRetentionDays: config.logsRetentionDays,
     analyticsRetentionDays: config.analyticsRetentionDays,
@@ -225,6 +248,24 @@ export const runDataPruning = async (
 
   const summary = buildSummary(byCategory);
 
+  // Log summary before deletion
+  if (config.mode === 'delete' && !config.dryRun) {
+    logger.warn('Data retention deletion summary', {
+      eligibleFiles: summary.eligibleFiles,
+      deletedFiles: summary.deletedFiles,
+      byCategory: {
+        logs: {
+          eligibleFiles: summary.byCategory.logs.eligibleFiles,
+          deletedFiles: summary.byCategory.logs.deletedFiles,
+        },
+        analytics: {
+          eligibleFiles: summary.byCategory.analytics.eligibleFiles,
+          deletedFiles: summary.byCategory.analytics.deletedFiles,
+        },
+      },
+    });
+  }
+
   logger.info('Data retention pruning completed', {
     scannedFiles: summary.scannedFiles,
     eligibleFiles: summary.eligibleFiles,
@@ -232,6 +273,7 @@ export const runDataPruning = async (
     deletedFiles: summary.deletedFiles,
     skippedFiles: summary.skippedFiles,
     errorCount: summary.errors.length,
+    dryRun: config.dryRun,
     byCategory: {
       logs: {
         ...summary.byCategory.logs,

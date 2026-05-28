@@ -94,7 +94,12 @@ const envSchema = z.object({
     .enum(['true', 'false', '1', '0'])
     .optional()
     .transform((v) => v !== 'false' && v !== '0')
-    .default(true),
+    .default(false),
+  DATA_PRUNING_DRY_RUN: z
+    .enum(['true', 'false', '1', '0'])
+    .optional()
+    .transform((v) => v === 'true' || v === '1')
+    .default(false),
   DATA_RETENTION_MODE: z.enum(['archive', 'delete']).default('archive'),
   DATA_RETENTION_ARCHIVE_DIR: z.string().default('cold-storage'),
   DATA_PRUNING_CRON: z.string().default('0 2 * * *'),
