@@ -126,6 +126,14 @@ async function handleVideoUpload(job: Job): Promise<void> {
       // Report progress
       await job.updateProgress(Math.round(((i + 1) / totalChunks) * 100));
     }
+  } catch (error) {
+    // Clean up progress on upload failure
+    await tiktokService.clearUploadProgress(publishId);
+    logger.error('TikTok video upload failed, progress cleaned up', {
+      publishId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
   } finally {
     await fileHandle.close();
   }
