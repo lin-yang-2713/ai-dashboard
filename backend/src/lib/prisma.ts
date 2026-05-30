@@ -9,7 +9,7 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 const tracer = trace.getTracer('socialflow-db');
 
 // Models that support soft delete (have a deletedAt field)
-const SOFT_DELETE_MODELS = new Set(['User', 'Listing']);
+const SOFT_DELETE_MODELS = new Set(['User', 'Listing', 'Post', 'Organization', 'WebhookSubscription']);
 
 // Models that should be scoped to an organization
 const ORG_SCOPED_MODELS = new Set(['Post', 'AnalyticsEntry']);
