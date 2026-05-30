@@ -51,6 +51,7 @@ test-results
 # Project Tracking
 tasks.md
 task.md
+vrickish.md
 # Test coverage
 coverage
 .nyc_output
