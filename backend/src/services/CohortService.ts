@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client';
 import { sqltag, empty } from '@prisma/client/runtime/library';
 import { createLogger } from '../lib/logger';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 const logger = createLogger('cohort-service');
 
 export type CohortLabel =
