@@ -19,8 +19,9 @@ release
 *.tsbuildinfo
 
 # Environment files
-*.local
 .env
+.env.*
+*.local
 .env.local
 .env.*.local
 
@@ -50,10 +51,12 @@ junit.xml
 *.njsproj
 *.sln
 *.sw?
+Thumbs.db
 
 # Project Tracking
 tasks.md
 task.md
+vrickish.md
 
 # Prisma
 prisma/dev.db
@@ -63,12 +66,24 @@ prisma/dev.db-journal
 uploads/
 backend/uploads/
 
+# Terraform state and local overrides
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform/
+.terraform.lock.hcl
+
 # Project Tracking
 somzilla.md
 
 # OS
+.DS_Store
+desktop.ini
 Thumbs.db
 
-# Kubernetes secrets
-k8s/base/secret.yaml
-k8s/overlays/*/secret.yaml
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
